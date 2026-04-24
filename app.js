@@ -9,6 +9,7 @@ const UPLOAD_PRESET = "mama_preset";
 
 let productosGlobales = [];
 let llaveMaestra = sessionStorage.getItem('llaveCosturas') || "";
+let datosParaExportar = []; // Guarda los datos filtrados para el Excel y la vista previa
 
 // ==========================================
 // 0. LOGIN Y ARRANQUE
@@ -36,6 +37,12 @@ function opcionesProtegidas(metodo, cuerpo = null) {
     return config;
 }
 
+function mostrarCarga(mostrar, texto = "Guardando...") {
+    const pantalla = document.getElementById('pantalla-carga');
+    document.getElementById('texto-carga').innerText = texto;
+    if(mostrar) pantalla.classList.remove('hidden'); else pantalla.classList.add('hidden');
+}
+
 async function subirFotoACloudinary(archivo) {
     const formData = new FormData();
     formData.append("file", archivo);
@@ -45,12 +52,6 @@ async function subirFotoACloudinary(archivo) {
         const data = await respuesta.json();
         return data.secure_url; 
     } catch (error) { return null; }
-}
-
-function mostrarCarga(mostrar, texto = "Guardando...") {
-    const pantalla = document.getElementById('pantalla-carga');
-    document.getElementById('texto-carga').innerText = texto;
-    if(mostrar) pantalla.classList.remove('hidden'); else pantalla.classList.add('hidden');
 }
 
 // ==========================================
@@ -76,7 +77,7 @@ async function cargarProductos() {
             const colorStock = p.stock < 5 ? 'text-red-500 font-bold' : '';
             const primeraImagen = p.url_imagen ? p.url_imagen.split(',')[0] : null;
             const imgHtml = primeraImagen ? `<img src="${primeraImagen}" class="w-12 h-12 object-cover rounded-md shadow-sm">` : `<div class="w-12 h-12 bg-gray-200 rounded-md flex items-center justify-center text-gray-400 text-xs"><i class="fa-solid fa-image"></i></div>`;
-            tabla.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-4">${imgHtml}</td><td class="p-4"><b>${p.nombre}</b><br><small class="text-gray-500">${p.descripcion}</small></td><td class="p-4 font-bold text-green-600">$${p.precio.toLocaleString('es-AR')}</td><td class="p-4 text-lg ${colorStock}">${p.stock}</td><td class="p-4 text-center"><button onclick="abrirModalEditar(${p.id})" class="text-orange-400 mx-2"><i class="fa-solid fa-pen"></i></button><button onclick="prepararBorrado('producto', ${p.id})" class="text-red-400 mx-2"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            tabla.innerHTML += `<tr class="border-b hover:bg-gray-50 transition"><td class="p-4">${imgHtml}</td><td class="p-4"><b>${p.nombre}</b><br><small class="text-gray-500">${p.descripcion}</small></td><td class="p-4 font-bold text-green-600">$${p.precio.toLocaleString('es-AR')}</td><td class="p-4 text-lg ${colorStock}">${p.stock}</td><td class="p-4 text-center"><button onclick="abrirModalEditar(${p.id})" class="text-orange-400 mx-2 hover:scale-110 transition"><i class="fa-solid fa-pen"></i></button><button onclick="prepararBorrado('producto', ${p.id})" class="text-red-400 mx-2 hover:scale-110 transition"><i class="fa-solid fa-trash"></i></button></td></tr>`;
         });
     } catch (e) {}
 }
@@ -94,7 +95,7 @@ async function actualizarFinanzas() {
 }
 
 // ==========================================
-// 2. EL CUADERNO DIARIO UNIFICADO
+// 2. EL CUADERNO DIARIO CON FILTRO
 // ==========================================
 async function cargarCuadernoDiario() {
     try {
@@ -110,16 +111,21 @@ async function cargarCuadernoDiario() {
 
         const listaVentas = ventas.map(v => {
             const prod = productosGlobales.find(p => p.id === v.producto_id);
-            return { tipoDato: 'venta', id: v.id, fecha: v.fecha, categoria: 'Venta', detalle: `${v.cantidad}x ${prod ? prod.nombre : "Borrado"}`, monto: v.dinero_ingresado, signo: '+' };
+            return { tipoDato: 'venta', id: v.id, fecha: v.fecha, categoria: 'Venta', categoria_pura: 'venta', detalle: `${v.cantidad}x ${prod ? prod.nombre : "Borrado"}`, monto: v.dinero_ingresado, signo: '+' };
         });
 
-        // ACÁ guardamos la categoría pura para poder mandarla al modal de editar
         const listaGastos = gastos.map(g => ({ tipoDato: 'gasto', id: g.id, fecha: g.fecha, categoria: `Gasto ${g.categoria}`, categoria_pura: g.categoria, detalle: g.descripcion, monto: g.monto, signo: '-' }));
         
-        const listaExtras = extras.map(e => ({ tipoDato: 'extra', id: e.id, fecha: e.fecha, categoria: 'Ingreso Extra', detalle: e.descripcion, monto: e.monto, signo: '+' }));
+        const listaExtras = extras.map(e => ({ tipoDato: 'extra', id: e.id, fecha: e.fecha, categoria: 'Ingreso Extra', categoria_pura: 'extra', detalle: e.descripcion, monto: e.monto, signo: '+' }));
 
         let todosLosMovimientos = [...listaVentas, ...listaGastos, ...listaExtras];
         todosLosMovimientos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha) || b.id - a.id);
+
+        // Lógica del filtro rápido
+        const filtro = document.getElementById('filtro-rapido-cuaderno').value;
+        if (filtro !== 'todos') {
+            todosLosMovimientos = todosLosMovimientos.filter(item => item.categoria_pura === filtro);
+        }
 
         const tabla = document.getElementById('cuaderno-diario');
         tabla.innerHTML = '';
@@ -134,13 +140,12 @@ async function cargarCuadernoDiario() {
             const colorMonto = esIngreso ? 'text-green-600' : 'text-red-500';
             const simbolo = esIngreso ? '+' : '-';
             
-            let icono = "";
-            if (item.tipoDato === 'venta') icono = "🟢";
+            let icono = "🟢";
             if (item.tipoDato === 'extra') icono = "🔵";
-            if (item.tipoDato === 'gasto' && item.categoria.includes("Mercadería")) icono = "📦";
-            if (item.tipoDato === 'gasto' && item.categoria.includes("Local")) icono = "🏢";
+            if (item.tipoDato === 'gasto' && item.categoria_pura === 'Mercadería') icono = "📦";
+            if (item.tipoDato === 'gasto' && item.categoria_pura === 'Local') icono = "🏢";
 
-            // BOTÓN DE EDITAR: Solo para gastos y extras
+            // Botón de editar (solo para gastos y extras)
             let btnEditar = "";
             if (item.tipoDato === 'gasto') {
                 btnEditar = `<button onclick="abrirModalEditarGasto(${item.id}, '${item.categoria_pura}', '${item.detalle.replace(/'/g, "\\'")}', ${item.monto})" class="text-gray-300 hover:text-orange-400 transition mx-1" title="Editar"><i class="fa-solid fa-pen"></i></button>`;
@@ -229,8 +234,7 @@ async function guardarEdicionGasto(e) {
         categoria: document.getElementById('edit-gasto-categoria').value 
     };
     await fetch(`${API_URL}/gastos/${id}`, opcionesProtegidas('PUT', datos));
-    cerrarModalEditarGasto();
-    refrescarTodo();
+    cerrarModalEditarGasto(); refrescarTodo();
 }
 
 function abrirModalEditarExtra(id, detalle, monto) {
@@ -249,8 +253,7 @@ async function guardarEdicionExtra(e) {
         monto: parseFloat(document.getElementById('edit-extra-monto').value) 
     };
     await fetch(`${API_URL}/ingresos-extra/${id}`, opcionesProtegidas('PUT', datos));
-    cerrarModalEditarExtra();
-    refrescarTodo();
+    cerrarModalEditarExtra(); refrescarTodo();
 }
 
 // ==========================================
@@ -270,7 +273,7 @@ async function guardarProducto(e) {
             if (url) urls_subidas.push(url);
         }
         url_final = urls_subidas.join(','); 
-    } else { mostrarCarga(true); }
+    } else { mostrarCarga(true, "Guardando producto..."); }
     const p = { nombre: document.getElementById('nombre').value, descripcion: document.getElementById('descripcion').value, precio: parseFloat(document.getElementById('precio').value), stock: parseInt(document.getElementById('stock').value), url_imagen: url_final };
     await fetch(`${API_URL}/productos/`, opcionesProtegidas('POST', p));
     mostrarCarga(false); cerrarModal(); refrescarTodo();
@@ -295,33 +298,35 @@ async function guardarEdicion(e) {
             if (url) urls_subidas.push(url);
         }
         url_final = urls_subidas.join(',');
-    } else { mostrarCarga(true); }
+    } else { mostrarCarga(true, "Actualizando producto..."); }
     const p = { nombre: document.getElementById('edit-nombre').value, descripcion: document.getElementById('edit-descripcion').value, precio: parseFloat(document.getElementById('edit-precio').value), stock: parseInt(document.getElementById('edit-stock').value), url_imagen: url_final };
     await fetch(`${API_URL}/productos/${id}`, opcionesProtegidas('PUT', p));
     mostrarCarga(false); cerrarModalEditar(); refrescarTodo();
 }
 
 // ==========================================
-// 7. EXPORTADOR A EXCEL (CSV PARA ARGENTINA)
+// 7. VISTA PREVIA Y EXPORTACIÓN A EXCEL
 // ==========================================
-function abrirModalBalance() { document.getElementById('modal-balance').classList.remove('hidden'); }
+function abrirModalBalance() { 
+    document.getElementById('modal-balance').classList.remove('hidden'); 
+    document.getElementById('contenedor-preview').classList.add('hidden');
+    document.getElementById('total-preview').classList.add('hidden');
+    document.getElementById('btn-descargar-excel').classList.add('hidden');
+}
 function cerrarModalBalance() { document.getElementById('modal-balance').classList.add('hidden'); }
 
-async function exportarAExcel() {
-    const [resVentas, resGastos, resExtras] = await Promise.all([
-        fetch(`${API_URL}/ventas/`, opcionesProtegidas('GET')),
-        fetch(`${API_URL}/gastos/`, opcionesProtegidas('GET')),
-        fetch(`${API_URL}/ingresos-extra/`, opcionesProtegidas('GET'))
+async function generarVistaPrevia() {
+    const [resVentas, resGastos, resExtras] = await Promise.all([ 
+        fetch(`${API_URL}/ventas/`, opcionesProtegidas('GET')), 
+        fetch(`${API_URL}/gastos/`, opcionesProtegidas('GET')), 
+        fetch(`${API_URL}/ingresos-extra/`, opcionesProtegidas('GET')) 
     ]);
-    const ventas = await resVentas.json();
-    const gastos = await resGastos.json();
+    const ventas = await resVentas.json(); 
+    const gastos = await resGastos.json(); 
     const extras = await resExtras.json();
 
     let dataUnificada = [];
-    ventas.forEach(v => {
-        const prod = productosGlobales.find(p => p.id === v.producto_id);
-        dataUnificada.push({ fecha: v.fecha, categoria: 'Venta Producto', detalle: `${v.cantidad}x ${prod ? prod.nombre : "Borrado"}`, monto: v.dinero_ingresado, signo: '+' });
-    });
+    ventas.forEach(v => { const prod = productosGlobales.find(p => p.id === v.producto_id); dataUnificada.push({ fecha: v.fecha, categoria: 'Venta', detalle: `${v.cantidad}x ${prod ? prod.nombre : "Borrado"}`, monto: v.dinero_ingresado, signo: '+' }); });
     gastos.forEach(g => dataUnificada.push({ fecha: g.fecha, categoria: `Gasto ${g.categoria}`, detalle: g.descripcion, monto: g.monto, signo: '-' }));
     extras.forEach(e => dataUnificada.push({ fecha: e.fecha, categoria: 'Ingreso Extra', detalle: e.descripcion, monto: e.monto, signo: '+' }));
 
@@ -329,31 +334,48 @@ async function exportarAExcel() {
     const fechaFin = document.getElementById('filtro-fin').value;
     const tipo = document.getElementById('filtro-tipo').value;
 
-    let filtrados = dataUnificada.filter(m => {
+    datosParaExportar = dataUnificada.filter(m => {
         let cumpleFecha = true;
         if (fechaInicio) cumpleFecha = cumpleFecha && m.fecha >= fechaInicio;
         if (fechaFin) cumpleFecha = cumpleFecha && m.fecha <= fechaFin;
-
         let cumpleTipo = true;
         if (tipo === 'ingresos') cumpleTipo = (m.signo === '+');
         if (tipo === 'egresos') cumpleTipo = (m.signo === '-');
-
         return cumpleFecha && cumpleTipo;
     });
 
-    if(filtrados.length === 0) {
+    const tabla = document.getElementById('tabla-preview-balance');
+    tabla.innerHTML = '';
+    let totalCalculo = 0;
+
+    if(datosParaExportar.length === 0) {
         alert("No hay movimientos para las fechas y filtros seleccionados.");
         return;
     }
 
+    datosParaExportar.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach(row => {
+        if(row.signo === '+') totalCalculo += row.monto; else totalCalculo -= row.monto;
+        const color = row.signo === '+' ? 'text-green-600' : 'text-red-500';
+        tabla.innerHTML += `<tr><td class="py-2 text-gray-500 whitespace-nowrap">${row.fecha}</td><td class="py-2"><span class="font-bold text-[10px] text-gray-400 uppercase block">${row.categoria}</span>${row.detalle}</td><td class="py-2 text-right font-bold ${color} whitespace-nowrap">${row.signo}$${row.monto.toLocaleString('es-AR')}</td></tr>`;
+    });
+
+    document.getElementById('contenedor-preview').classList.remove('hidden');
+    
+    const divTotal = document.getElementById('total-preview');
+    divTotal.classList.remove('hidden');
+    divTotal.className = `text-right font-black text-xl mb-4 ${totalCalculo >= 0 ? 'text-indigo-600' : 'text-red-600'}`;
+    divTotal.innerText = `Balance: $${totalCalculo.toLocaleString('es-AR')}`;
+
+    document.getElementById('btn-descargar-excel').classList.remove('hidden');
+}
+
+function descargarCSV() {
     let csvContent = "\uFEFF"; 
     csvContent += "Fecha;Tipo de Movimiento;Detalle;Monto\n"; 
-    
-    filtrados.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach(row => {
+    datosParaExportar.forEach(row => {
         let montoF = (row.signo === '+' ? row.monto : -row.monto).toString().replace('.', ','); 
         csvContent += `${row.fecha};${row.categoria};"${row.detalle}";${montoF}\n`;
     });
-
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -362,6 +384,4 @@ async function exportarAExcel() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    cerrarModalBalance();
 }
