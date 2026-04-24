@@ -25,7 +25,7 @@
     </div>
 
     <header class="mb-8 text-center md:text-left">
-        <h1 class="text-3xl font-bold text-indigo-600"><i class="fa-solid fa-book-open"></i> Matilde V. - Panel de Administración</h1>
+        <h1 class="text-3xl font-bold text-indigo-600"><i class="fa-solid fa-book-open"></i> Matilde V. - Finanzas</h1>
         <p class="text-gray-500 text-lg">Tu cuaderno de control automático</p>
     </header>
 
@@ -48,11 +48,12 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
         <button onclick="abrirModalVenta()" class="bg-green-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-hand-holding-dollar text-2xl mb-2 block"></i> Anotar Venta</button>
         <button onclick="abrirModalIngresoExtra()" class="bg-teal-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-piggy-bank text-2xl mb-2 block"></i> Ingreso Extra</button>
         <button onclick="abrirModalGasto()" class="bg-red-400 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-cart-shopping text-2xl mb-2 block"></i> Anotar Gasto</button>
         <button onclick="abrirModal()" class="bg-indigo-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-plus text-2xl mb-2 block"></i> Nuevo Producto</button>
+        <button onclick="abrirModalBalance()" class="bg-blue-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-file-excel text-2xl mb-2 block"></i> Exportar Balance</button>
     </div>
 
     <h2 class="text-xl font-bold mb-4 border-b-2 border-gray-200 pb-2">Cuaderno Diario de Movimientos</h2>
@@ -139,6 +140,59 @@
                     <input type="file" id="edit-imagen-producto" accept="image/*" multiple class="w-full border-2 p-2 rounded-lg bg-orange-50">
                 </div>
                 <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditar()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold">Actualizar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-balance" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-2xl font-bold mb-4 text-blue-600"><i class="fa-solid fa-file-excel"></i> Exportar Planilla</h3>
+            <div class="mb-4 flex gap-4">
+                <div class="w-1/2"><label class="block font-bold mb-1 text-sm">Desde Fecha</label><input type="date" id="filtro-inicio" class="w-full border-2 p-2 rounded-lg outline-none focus:border-blue-500"></div>
+                <div class="w-1/2"><label class="block font-bold mb-1 text-sm">Hasta Fecha</label><input type="date" id="filtro-fin" class="w-full border-2 p-2 rounded-lg outline-none focus:border-blue-500"></div>
+            </div>
+            <div class="mb-6">
+                <label class="block font-bold mb-1 text-sm">Tipo de Movimiento</label>
+                <select id="filtro-tipo" class="w-full border-2 p-3 rounded-lg outline-none focus:border-blue-500">
+                    <option value="todos">Todos los movimientos</option>
+                    <option value="ingresos">Solo Ingresos (Ventas y Extras)</option>
+                    <option value="egresos">Solo Egresos (Gastos)</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="cerrarModalBalance()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button>
+                <button onclick="exportarAExcel()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-2 rounded-lg font-bold"><i class="fa-solid fa-download"></i> Descargar Excel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-editar-gasto" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-2xl font-bold mb-4 text-red-500">Editar Gasto</h3>
+            <form onsubmit="guardarEdicionGasto(event)">
+                <input type="hidden" id="edit-gasto-id">
+                <div class="mb-4">
+                    <label class="block font-bold mb-1">Categoría</label>
+                    <select id="edit-gasto-categoria" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required>
+                        <option value="Mercadería">📦 Inversión en Mercadería</option>
+                        <option value="Local">🏢 Gasto Fijo / Local</option>
+                    </select>
+                </div>
+                <div class="mb-4"><label class="block font-bold mb-1">Detalle</label><input type="text" id="edit-gasto-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div>
+                <div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="edit-gasto-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div>
+                <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditarGasto()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-red-500 hover:bg-red-600 transition text-white px-6 py-2 rounded-lg font-bold">Actualizar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-editar-extra" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-2xl font-bold mb-4 text-teal-600">Editar Ingreso Extra</h3>
+            <form onsubmit="guardarEdicionExtra(event)">
+                <input type="hidden" id="edit-extra-id">
+                <div class="mb-4"><label class="block font-bold mb-1">Concepto</label><input type="text" id="edit-extra-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div>
+                <div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="edit-extra-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div>
+                <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditarExtra()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-teal-500 hover:bg-teal-600 transition text-white px-6 py-2 rounded-lg font-bold">Actualizar</button></div>
             </form>
         </div>
     </div>
