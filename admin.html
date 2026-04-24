@@ -53,12 +53,22 @@
         <button onclick="abrirModalIngresoExtra()" class="bg-teal-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-piggy-bank text-2xl mb-2 block"></i> Ingreso Extra</button>
         <button onclick="abrirModalGasto()" class="bg-red-400 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-cart-shopping text-2xl mb-2 block"></i> Anotar Gasto</button>
         <button onclick="abrirModal()" class="bg-indigo-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-plus text-2xl mb-2 block"></i> Nuevo Producto</button>
-        <button onclick="abrirModalBalance()" class="bg-blue-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-file-excel text-2xl mb-2 block"></i> Exportar Balance</button>
+        <button onclick="abrirModalBalance()" class="bg-blue-500 text-white p-4 rounded-xl font-bold text-lg shadow-md hover:scale-105 transition"><i class="fa-solid fa-file-invoice-dollar text-2xl mb-2 block"></i> Ver Balance</button>
     </div>
 
-    <h2 class="text-xl font-bold mb-4 border-b-2 border-gray-200 pb-2">Cuaderno Diario de Movimientos</h2>
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-10 border border-gray-200">
-        <table class="w-full text-left text-sm md:text-base">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 border-b-2 border-gray-200 pb-2 gap-2">
+        <h2 class="text-xl font-bold">Cuaderno Diario de Movimientos</h2>
+        <select id="filtro-rapido-cuaderno" onchange="cargarCuadernoDiario()" class="border-2 border-gray-300 p-2 rounded-lg outline-none focus:border-indigo-500 font-medium text-sm">
+            <option value="todos">Ver Todo</option>
+            <option value="venta">🟢 Solo Ventas</option>
+            <option value="extra">🔵 Solo Ingresos Extra</option>
+            <option value="Mercadería">📦 Solo Inv. Mercadería</option>
+            <option value="Local">🏢 Solo Gastos Local</option>
+        </select>
+    </div>
+    
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-10 border border-gray-200 overflow-x-auto">
+        <table class="w-full text-left text-sm md:text-base min-w-[600px]">
             <thead class="bg-gray-100 text-gray-700">
                 <tr>
                     <th class="p-4">Fecha</th>
@@ -68,14 +78,13 @@
                     <th class="p-4 text-center">Acción</th>
                 </tr>
             </thead>
-            <tbody id="cuaderno-diario" class="divide-y divide-gray-100">
-                </tbody>
+            <tbody id="cuaderno-diario" class="divide-y divide-gray-100"></tbody>
         </table>
     </div>
 
     <h2 class="text-xl font-bold mb-4 border-b-2 border-gray-200 pb-2">Control de Stock</h2>
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-10">
-        <table class="w-full text-left">
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-10 overflow-x-auto">
+        <table class="w-full text-left min-w-[600px]">
             <thead class="bg-gray-100 text-gray-600"><tr><th class="p-4">Foto</th><th class="p-4">Producto</th><th class="p-4">Precio</th><th class="p-4">Stock</th><th class="p-4 text-center">Acciones</th></tr></thead>
             <tbody id="tabla-productos" class="divide-y divide-gray-200"></tbody>
         </table>
@@ -85,115 +94,50 @@
     
     <div id="modal-venta" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-green-600">Anotar Venta</h3><form onsubmit="guardarVenta(event)"><div class="mb-4"><label class="block font-bold mb-1">Producto</label><select id="venta-producto-id" class="w-full border-2 p-3 rounded-lg outline-none focus:border-green-500" required></select></div><div class="mb-6"><label class="block font-bold mb-1">Cantidad</label><input type="number" id="venta-cantidad" min="1" value="1" class="w-full border-2 p-3 rounded-lg outline-none focus:border-green-500" required></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalVenta()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold">Guardar</button></div></form></div></div>
     
-    <div id="modal-ingreso-extra" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-teal-600">Ingreso Extra</h3><form onsubmit="guardarIngresoExtra(event)"><div class="mb-4"><label class="block font-bold mb-1">Concepto</label><input type="text" id="extra-descripcion" placeholder="Ej: Seña, capital inicial..." class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div><div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="extra-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalIngresoExtra()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-teal-500 text-white px-6 py-2 rounded-lg font-bold">Guardar</button></div></form></div></div>
+    <div id="modal-ingreso-extra" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-teal-600">Ingreso Extra</h3><form onsubmit="guardarIngresoExtra(event)"><div class="mb-4"><label class="block font-bold mb-1">Concepto</label><input type="text" id="extra-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div><div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="extra-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalIngresoExtra()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-teal-500 text-white px-6 py-2 rounded-lg font-bold">Guardar</button></div></form></div></div>
     
-    <div id="modal-gasto" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 text-red-500">Anotar Gasto / Compra</h3>
-            <form onsubmit="guardarGasto(event)">
-                <div class="mb-4">
-                    <label class="block font-bold mb-1">¿Qué tipo de gasto es?</label>
-                    <select id="gasto-categoria" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required>
-                        <option value="Mercadería">📦 Inversión en Mercadería (Telas, Hilos, Cierres)</option>
-                        <option value="Local">🏢 Gasto Fijo / Local (Alquiler, Luz, Viáticos)</option>
+    <div id="modal-gasto" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-red-500">Anotar Gasto / Compra</h3><form onsubmit="guardarGasto(event)"><div class="mb-4"><label class="block font-bold mb-1">Categoría</label><select id="gasto-categoria" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required><option value="Mercadería">📦 Inversión Mercadería</option><option value="Local">🏢 Gasto Fijo / Local</option></select></div><div class="mb-4"><label class="block font-bold mb-1">Detalle</label><input type="text" id="gasto-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div><div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="gasto-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalGasto()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-red-500 text-white px-6 py-2 rounded-lg font-bold">Guardar</button></div></form></div></div>
+    
+    <div id="modal-producto" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-indigo-600">Nuevo Producto</h3><form onsubmit="guardarProducto(event)"><div class="mb-3"><label class="block font-bold">Nombre</label><input type="text" id="nombre" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div><div class="mb-3"><label class="block font-bold">Descripción</label><input type="text" id="descripcion" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div><div class="mb-3 flex gap-4"><div class="w-1/2"><label class="block font-bold">Precio ($)</label><input type="number" step="0.01" id="precio" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div><div class="w-1/2"><label class="block font-bold">Stock</label><input type="number" id="stock" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div></div><div class="mb-6"><label class="block font-bold text-indigo-600"><i class="fa-solid fa-camera"></i> Fotos</label><input type="file" id="imagen-producto" accept="image/*" multiple class="w-full border-2 p-2 rounded-lg bg-indigo-50"></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModal()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold">Guardar</button></div></form></div></div>
+
+    <div id="modal-editar" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-orange-500">Editar Producto</h3><form onsubmit="guardarEdicion(event)"><input type="hidden" id="edit-id"><input type="hidden" id="edit-url-vieja"><div class="mb-3"><label class="block font-bold">Nombre</label><input type="text" id="edit-nombre" class="w-full border-2 p-2 rounded-lg" required></div><div class="mb-3"><label class="block font-bold">Descripción</label><input type="text" id="edit-descripcion" class="w-full border-2 p-2 rounded-lg" required></div><div class="mb-3 flex gap-4"><div class="w-1/2"><label class="block font-bold">Precio ($)</label><input type="number" step="0.01" id="edit-precio" class="w-full border-2 p-2 rounded-lg" required></div><div class="w-1/2"><label class="block font-bold">Stock</label><input type="number" id="edit-stock" class="w-full border-2 p-2 rounded-lg" required></div></div><div class="mb-6"><label class="block font-bold text-orange-500"><i class="fa-solid fa-image"></i> Cambiar Fotos</label><input type="file" id="edit-imagen-producto" accept="image/*" multiple class="w-full border-2 p-2 rounded-lg bg-orange-50"></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditar()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold">Actualizar</button></div></form></div></div>
+    
+    <div id="modal-editar-gasto" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-red-500">Editar Gasto</h3><form onsubmit="guardarEdicionGasto(event)"><input type="hidden" id="edit-gasto-id"><div class="mb-4"><label class="block font-bold mb-1">Categoría</label><select id="edit-gasto-categoria" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required><option value="Mercadería">📦 Inversión Mercadería</option><option value="Local">🏢 Gasto Fijo / Local</option></select></div><div class="mb-4"><label class="block font-bold mb-1">Detalle</label><input type="text" id="edit-gasto-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div><div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="edit-gasto-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditarGasto()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-red-500 text-white px-6 py-2 rounded-lg font-bold">Actualizar</button></div></form></div></div>
+    
+    <div id="modal-editar-extra" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50"><div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-2xl font-bold mb-4 text-teal-600">Editar Ingreso Extra</h3><form onsubmit="guardarEdicionExtra(event)"><input type="hidden" id="edit-extra-id"><div class="mb-4"><label class="block font-bold mb-1">Concepto</label><input type="text" id="edit-extra-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div><div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="edit-extra-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div><div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditarExtra()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-teal-500 text-white px-6 py-2 rounded-lg font-bold">Actualizar</button></div></form></div></div>
+
+    <div id="modal-balance" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-2 md:p-4 z-50">
+        <div class="bg-white rounded-xl p-4 md:p-6 w-full max-w-4xl shadow-2xl flex flex-col max-h-[95vh]">
+            <h3 class="text-2xl font-bold mb-4 text-blue-600 border-b pb-2"><i class="fa-solid fa-file-invoice-dollar"></i> Reporte de Balance</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <div><label class="block font-bold mb-1 text-xs text-gray-500">Desde</label><input type="date" id="filtro-inicio" class="w-full border-2 p-2 rounded-lg text-sm outline-none"></div>
+                <div><label class="block font-bold mb-1 text-xs text-gray-500">Hasta</label><input type="date" id="filtro-fin" class="w-full border-2 p-2 rounded-lg text-sm outline-none"></div>
+                <div>
+                    <label class="block font-bold mb-1 text-xs text-gray-500">Mostrar</label>
+                    <select id="filtro-tipo" class="w-full border-2 p-2 rounded-lg text-sm outline-none">
+                        <option value="todos">Todos</option>
+                        <option value="ingresos">Solo Ingresos</option>
+                        <option value="egresos">Solo Egresos</option>
                     </select>
                 </div>
-                <div class="mb-4"><label class="block font-bold mb-1">Detalle</label><input type="text" id="gasto-descripcion" placeholder="Ej: 3 metros de friselina..." class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div>
-                <div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="gasto-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div>
-                <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalGasto()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-red-500 text-white px-6 py-2 rounded-lg font-bold">Guardar</button></div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modal-producto" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 text-indigo-600">Nuevo Producto</h3>
-            <form onsubmit="guardarProducto(event)">
-                <div class="mb-3"><label class="block font-bold">Nombre</label><input type="text" id="nombre" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div>
-                <div class="mb-3"><label class="block font-bold">Descripción</label><input type="text" id="descripcion" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div>
-                <div class="mb-3 flex gap-4">
-                    <div class="w-1/2"><label class="block font-bold">Precio ($)</label><input type="number" step="0.01" id="precio" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div>
-                    <div class="w-1/2"><label class="block font-bold">Stock</label><input type="number" id="stock" class="w-full border-2 p-2 rounded-lg outline-none focus:border-indigo-500" required></div>
-                </div>
-                <div class="mb-6">
-                    <label class="block font-bold text-indigo-600"><i class="fa-solid fa-camera"></i> Fotos del producto</label>
-                    <input type="file" id="imagen-producto" accept="image/*" multiple class="w-full border-2 p-2 rounded-lg bg-indigo-50 outline-none focus:border-indigo-500">
-                </div>
-                <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModal()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold">Guardar</button></div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modal-editar" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 text-orange-500">Editar Producto</h3>
-            <form onsubmit="guardarEdicion(event)">
-                <input type="hidden" id="edit-id"><input type="hidden" id="edit-url-vieja"> 
-                <div class="mb-3"><label class="block font-bold">Nombre</label><input type="text" id="edit-nombre" class="w-full border-2 p-2 rounded-lg" required></div>
-                <div class="mb-3"><label class="block font-bold">Descripción</label><input type="text" id="edit-descripcion" class="w-full border-2 p-2 rounded-lg" required></div>
-                <div class="mb-3 flex gap-4">
-                    <div class="w-1/2"><label class="block font-bold">Precio ($)</label><input type="number" step="0.01" id="edit-precio" class="w-full border-2 p-2 rounded-lg" required></div>
-                    <div class="w-1/2"><label class="block font-bold">Stock</label><input type="number" id="edit-stock" class="w-full border-2 p-2 rounded-lg" required></div>
-                </div>
-                <div class="mb-6">
-                    <label class="block font-bold text-orange-500"><i class="fa-solid fa-image"></i> Cambiar Fotos</label>
-                    <input type="file" id="edit-imagen-producto" accept="image/*" multiple class="w-full border-2 p-2 rounded-lg bg-orange-50">
-                </div>
-                <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditar()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold">Actualizar</button></div>
-            </form>
-        </div>
-    </div>
-
-    <div id="modal-balance" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 text-blue-600"><i class="fa-solid fa-file-excel"></i> Exportar Planilla</h3>
-            <div class="mb-4 flex gap-4">
-                <div class="w-1/2"><label class="block font-bold mb-1 text-sm">Desde Fecha</label><input type="date" id="filtro-inicio" class="w-full border-2 p-2 rounded-lg outline-none focus:border-blue-500"></div>
-                <div class="w-1/2"><label class="block font-bold mb-1 text-sm">Hasta Fecha</label><input type="date" id="filtro-fin" class="w-full border-2 p-2 rounded-lg outline-none focus:border-blue-500"></div>
             </div>
-            <div class="mb-6">
-                <label class="block font-bold mb-1 text-sm">Tipo de Movimiento</label>
-                <select id="filtro-tipo" class="w-full border-2 p-3 rounded-lg outline-none focus:border-blue-500">
-                    <option value="todos">Todos los movimientos</option>
-                    <option value="ingresos">Solo Ingresos (Ventas y Extras)</option>
-                    <option value="egresos">Solo Egresos (Gastos)</option>
-                </select>
-            </div>
-            <div class="flex justify-end space-x-3">
-                <button type="button" onclick="cerrarModalBalance()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button>
-                <button onclick="exportarAExcel()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-2 rounded-lg font-bold"><i class="fa-solid fa-download"></i> Descargar Excel</button>
-            </div>
-        </div>
-    </div>
+            
+            <button onclick="generarVistaPrevia()" class="w-full bg-slate-800 text-white py-2 rounded-lg font-bold mb-4 hover:bg-slate-700 transition">Generar Vista Previa</button>
 
-    <div id="modal-editar-gasto" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 text-red-500">Editar Gasto</h3>
-            <form onsubmit="guardarEdicionGasto(event)">
-                <input type="hidden" id="edit-gasto-id">
-                <div class="mb-4">
-                    <label class="block font-bold mb-1">Categoría</label>
-                    <select id="edit-gasto-categoria" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required>
-                        <option value="Mercadería">📦 Inversión en Mercadería</option>
-                        <option value="Local">🏢 Gasto Fijo / Local</option>
-                    </select>
-                </div>
-                <div class="mb-4"><label class="block font-bold mb-1">Detalle</label><input type="text" id="edit-gasto-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div>
-                <div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="edit-gasto-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-red-500" required></div>
-                <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditarGasto()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-red-500 hover:bg-red-600 transition text-white px-6 py-2 rounded-lg font-bold">Actualizar</button></div>
-            </form>
-        </div>
-    </div>
+            <div class="flex-grow overflow-y-auto border rounded-lg bg-gray-50 p-2 mb-4 hidden" id="contenedor-preview">
+                <table class="w-full text-left text-xs md:text-sm">
+                    <thead class="text-gray-500 border-b"><tr><th class="pb-2">Fecha</th><th class="pb-2">Detalle</th><th class="pb-2 text-right">Monto</th></tr></thead>
+                    <tbody id="tabla-preview-balance" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+            
+            <div id="total-preview" class="text-right font-black text-xl mb-4 hidden"></div>
 
-    <div id="modal-editar-extra" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 class="text-2xl font-bold mb-4 text-teal-600">Editar Ingreso Extra</h3>
-            <form onsubmit="guardarEdicionExtra(event)">
-                <input type="hidden" id="edit-extra-id">
-                <div class="mb-4"><label class="block font-bold mb-1">Concepto</label><input type="text" id="edit-extra-descripcion" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div>
-                <div class="mb-6"><label class="block font-bold mb-1">Monto ($)</label><input type="number" step="0.01" id="edit-extra-monto" class="w-full border-2 p-3 rounded-lg outline-none focus:border-teal-500" required></div>
-                <div class="flex justify-end space-x-3"><button type="button" onclick="cerrarModalEditarExtra()" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancelar</button><button type="submit" class="bg-teal-500 hover:bg-teal-600 transition text-white px-6 py-2 rounded-lg font-bold">Actualizar</button></div>
-            </form>
+            <div class="flex justify-between items-center mt-auto">
+                <button type="button" onclick="cerrarModalBalance()" class="text-gray-500 font-bold px-4 py-2 hover:bg-gray-100 rounded-lg transition">Cerrar</button>
+                <button id="btn-descargar-excel" onclick="descargarCSV()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-6 py-2 rounded-lg font-bold hidden"><i class="fa-solid fa-download"></i> Descargar Excel</button>
+            </div>
         </div>
     </div>
 
