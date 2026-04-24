@@ -1,5 +1,5 @@
 const API_URL = "https://api-costuras-mama.onrender.com";
-const NUMERO_WHATSAPP = "5493815000000"; 
+const NUMERO_WHATSAPP = "5493816327024"; 
 
 // Función para cambiar la imagen principal cuando tocan una miniatura
 function cambiarImagen(idImagenPrincipal, nuevaUrl) {
