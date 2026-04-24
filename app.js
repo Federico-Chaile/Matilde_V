@@ -1,10 +1,18 @@
+// ==========================================
+// CONFIGURACIÓN PRINCIPAL
+// ==========================================
 const API_URL = "https://api-costuras-mama.onrender.com";
+
+// TUS CREDENCIALES DE CLOUDINARY
 const CLOUD_NAME = "dpf0rexlz";
 const UPLOAD_PRESET = "mama_preset";
 
 let productosGlobales = [];
 let llaveMaestra = sessionStorage.getItem('llaveCosturas') || "";
 
+// ==========================================
+// 0. LOGIN Y ARRANQUE
+// ==========================================
 if (llaveMaestra === "mama2026") {
     document.getElementById('pantalla-login').classList.add('hidden');
     refrescarTodo();
@@ -45,10 +53,13 @@ function mostrarCarga(mostrar, texto = "Guardando...") {
     if(mostrar) pantalla.classList.remove('hidden'); else pantalla.classList.add('hidden');
 }
 
+// ==========================================
+// 1. CARGA DE DATOS PRINCIPAL
+// ==========================================
 async function refrescarTodo() {
-    await cargarProductos(); // Productos primero para tener los nombres
+    await cargarProductos();
     actualizarFinanzas();
-    cargarCuadernoDiario(); // ¡La nueva función que unifica todo!
+    cargarCuadernoDiario(); 
 }
 
 async function cargarProductos() {
@@ -75,8 +86,6 @@ async function actualizarFinanzas() {
         const res = await fetch(`${API_URL}/finanzas/`, opcionesProtegidas('GET'));
         if (!res.ok) return; 
         const data = await res.json();
-        
-        // DIBUJAMOS LOS NUEVOS VALORES DEL CUADERNO
         document.getElementById('total-caja').innerText = `$ ${data.caja_final.toLocaleString('es-AR')}`;
         document.getElementById('total-ingresos').innerText = `$ ${data.ingresos_totales.toLocaleString('es-AR')}`;
         document.getElementById('total-mercaderia').innerText = `$ ${data.gasto_mercaderia.toLocaleString('es-AR')}`;
@@ -85,7 +94,7 @@ async function actualizarFinanzas() {
 }
 
 // ==========================================
-// EL NUEVO "CUADERNO DIARIO" UNIFICADO
+// 2. EL CUADERNO DIARIO UNIFICADO
 // ==========================================
 async function cargarCuadernoDiario() {
     try {
@@ -99,20 +108,17 @@ async function cargarCuadernoDiario() {
         const gastos = await resGastos.json();
         const extras = await resExtras.json();
 
-        // 1. Homogeneizamos los datos
         const listaVentas = ventas.map(v => {
             const prod = productosGlobales.find(p => p.id === v.producto_id);
             return { tipoDato: 'venta', id: v.id, fecha: v.fecha, categoria: 'Venta', detalle: `${v.cantidad}x ${prod ? prod.nombre : "Borrado"}`, monto: v.dinero_ingresado, signo: '+' };
         });
 
-        const listaGastos = gastos.map(g => ({ tipoDato: 'gasto', id: g.id, fecha: g.fecha, categoria: `Gasto ${g.categoria}`, detalle: g.descripcion, monto: g.monto, signo: '-' }));
+        // ACÁ guardamos la categoría pura para poder mandarla al modal de editar
+        const listaGastos = gastos.map(g => ({ tipoDato: 'gasto', id: g.id, fecha: g.fecha, categoria: `Gasto ${g.categoria}`, categoria_pura: g.categoria, detalle: g.descripcion, monto: g.monto, signo: '-' }));
         
         const listaExtras = extras.map(e => ({ tipoDato: 'extra', id: e.id, fecha: e.fecha, categoria: 'Ingreso Extra', detalle: e.descripcion, monto: e.monto, signo: '+' }));
 
-        // 2. Juntamos todo en un solo array
         let todosLosMovimientos = [...listaVentas, ...listaGastos, ...listaExtras];
-
-        // 3. Ordenamos por fecha (los más nuevos arriba)
         todosLosMovimientos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha) || b.id - a.id);
 
         const tabla = document.getElementById('cuaderno-diario');
@@ -124,17 +130,23 @@ async function cargarCuadernoDiario() {
         }
 
         todosLosMovimientos.forEach(item => {
-            // Estilos dependiendo de si entra o sale plata
             const esIngreso = item.signo === '+';
             const colorMonto = esIngreso ? 'text-green-600' : 'text-red-500';
             const simbolo = esIngreso ? '+' : '-';
             
-            // Iconitos para que sea más visual
             let icono = "";
             if (item.tipoDato === 'venta') icono = "🟢";
             if (item.tipoDato === 'extra') icono = "🔵";
             if (item.tipoDato === 'gasto' && item.categoria.includes("Mercadería")) icono = "📦";
             if (item.tipoDato === 'gasto' && item.categoria.includes("Local")) icono = "🏢";
+
+            // BOTÓN DE EDITAR: Solo para gastos y extras
+            let btnEditar = "";
+            if (item.tipoDato === 'gasto') {
+                btnEditar = `<button onclick="abrirModalEditarGasto(${item.id}, '${item.categoria_pura}', '${item.detalle.replace(/'/g, "\\'")}', ${item.monto})" class="text-gray-300 hover:text-orange-400 transition mx-1" title="Editar"><i class="fa-solid fa-pen"></i></button>`;
+            } else if (item.tipoDato === 'extra') {
+                btnEditar = `<button onclick="abrirModalEditarExtra(${item.id}, '${item.detalle.replace(/'/g, "\\'")}', ${item.monto})" class="text-gray-300 hover:text-orange-400 transition mx-1" title="Editar"><i class="fa-solid fa-pen"></i></button>`;
+            }
 
             tabla.innerHTML += `
                 <tr class="border-b hover:bg-gray-50 transition">
@@ -142,8 +154,9 @@ async function cargarCuadernoDiario() {
                     <td class="p-4 hidden md:table-cell font-bold text-gray-600 text-xs uppercase">${icono} ${item.categoria}</td>
                     <td class="p-4 text-gray-800">${item.detalle}</td>
                     <td class="p-4 text-right font-black ${colorMonto} whitespace-nowrap">${simbolo} $${item.monto.toLocaleString('es-AR')}</td>
-                    <td class="p-4 text-center">
-                        <button onclick="prepararBorrado('${item.tipoDato}', ${item.id})" class="text-gray-300 hover:text-red-500 transition" title="Anular Movimiento">
+                    <td class="p-4 text-center whitespace-nowrap">
+                        ${btnEditar}
+                        <button onclick="prepararBorrado('${item.tipoDato}', ${item.id})" class="text-gray-300 hover:text-red-500 transition mx-1" title="Anular Movimiento">
                             <i class="fa-solid fa-trash-can text-lg"></i>
                         </button>
                     </td>
@@ -152,6 +165,9 @@ async function cargarCuadernoDiario() {
     } catch (e) { console.error("Error cuaderno:", e); }
 }
 
+// ==========================================
+// 3. SISTEMA DE BORRADO
+// ==========================================
 let tipoABorrar = "", idABorrar = null;
 function prepararBorrado(tipo, id) { tipoABorrar = tipo; idABorrar = id; document.getElementById('modal-borrar').classList.remove('hidden'); document.getElementById('btn-confirmar-borrar').onclick = ejecutarBorrado; }
 function cerrarModalBorrar() { document.getElementById('modal-borrar').classList.add('hidden'); }
@@ -166,6 +182,9 @@ async function ejecutarBorrado() {
     cerrarModalBorrar(); refrescarTodo();
 }
 
+// ==========================================
+// 4. CREAR VENTAS, GASTOS Y EXTRAS
+// ==========================================
 function abrirModalVenta() {
     const select = document.getElementById('venta-producto-id'); select.innerHTML = '';
     let hayStock = false;
@@ -180,21 +199,63 @@ function abrirModalIngresoExtra() { document.getElementById('modal-ingreso-extra
 function cerrarModalIngresoExtra() { document.getElementById('modal-ingreso-extra').classList.add('hidden'); document.getElementById('extra-descripcion').value=''; document.getElementById('extra-monto').value=''; }
 async function guardarIngresoExtra(e) { e.preventDefault(); const datos = { descripcion: document.getElementById('extra-descripcion').value, monto: parseFloat(document.getElementById('extra-monto').value) }; await fetch(`${API_URL}/ingresos-extra/`, opcionesProtegidas('POST', datos)); cerrarModalIngresoExtra(); refrescarTodo(); }
 
-// ¡GASTO ACTUALIZADO PARA MANDAR CATEGORÍA!
 function abrirModalGasto() { document.getElementById('modal-gasto').classList.remove('hidden'); }
 function cerrarModalGasto() { document.getElementById('modal-gasto').classList.add('hidden'); document.getElementById('gasto-descripcion').value=''; document.getElementById('gasto-monto').value=''; }
 async function guardarGasto(e) { 
     e.preventDefault(); 
-    const datos = { 
-        descripcion: document.getElementById('gasto-descripcion').value, 
-        monto: parseFloat(document.getElementById('gasto-monto').value),
-        categoria: document.getElementById('gasto-categoria').value // Local o Mercadería
-    }; 
+    const datos = { descripcion: document.getElementById('gasto-descripcion').value, monto: parseFloat(document.getElementById('gasto-monto').value), categoria: document.getElementById('gasto-categoria').value }; 
     await fetch(`${API_URL}/gastos/`, opcionesProtegidas('POST', datos)); 
-    cerrarModalGasto(); 
-    refrescarTodo(); 
+    cerrarModalGasto(); refrescarTodo(); 
 }
 
+// ==========================================
+// 5. EDITAR GASTOS Y EXTRAS
+// ==========================================
+function abrirModalEditarGasto(id, categoria, detalle, monto) {
+    document.getElementById('edit-gasto-id').value = id;
+    document.getElementById('edit-gasto-categoria').value = categoria;
+    document.getElementById('edit-gasto-descripcion').value = detalle;
+    document.getElementById('edit-gasto-monto').value = monto;
+    document.getElementById('modal-editar-gasto').classList.remove('hidden');
+}
+function cerrarModalEditarGasto() { document.getElementById('modal-editar-gasto').classList.add('hidden'); }
+
+async function guardarEdicionGasto(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-gasto-id').value;
+    const datos = { 
+        descripcion: document.getElementById('edit-gasto-descripcion').value, 
+        monto: parseFloat(document.getElementById('edit-gasto-monto').value),
+        categoria: document.getElementById('edit-gasto-categoria').value 
+    };
+    await fetch(`${API_URL}/gastos/${id}`, opcionesProtegidas('PUT', datos));
+    cerrarModalEditarGasto();
+    refrescarTodo();
+}
+
+function abrirModalEditarExtra(id, detalle, monto) {
+    document.getElementById('edit-extra-id').value = id;
+    document.getElementById('edit-extra-descripcion').value = detalle;
+    document.getElementById('edit-extra-monto').value = monto;
+    document.getElementById('modal-editar-extra').classList.remove('hidden');
+}
+function cerrarModalEditarExtra() { document.getElementById('modal-editar-extra').classList.add('hidden'); }
+
+async function guardarEdicionExtra(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-extra-id').value;
+    const datos = { 
+        descripcion: document.getElementById('edit-extra-descripcion').value, 
+        monto: parseFloat(document.getElementById('edit-extra-monto').value) 
+    };
+    await fetch(`${API_URL}/ingresos-extra/${id}`, opcionesProtegidas('PUT', datos));
+    cerrarModalEditarExtra();
+    refrescarTodo();
+}
+
+// ==========================================
+// 6. PRODUCTOS CON MÚLTIPLES FOTOS
+// ==========================================
 function abrirModal() { document.getElementById('modal-producto').classList.remove('hidden'); }
 function cerrarModal() { document.getElementById('modal-producto').classList.add('hidden'); document.getElementById('nombre').value=''; document.getElementById('descripcion').value=''; document.getElementById('precio').value=''; document.getElementById('stock').value=''; document.getElementById('imagen-producto').value=''; }
 async function guardarProducto(e) {
@@ -238,4 +299,69 @@ async function guardarEdicion(e) {
     const p = { nombre: document.getElementById('edit-nombre').value, descripcion: document.getElementById('edit-descripcion').value, precio: parseFloat(document.getElementById('edit-precio').value), stock: parseInt(document.getElementById('edit-stock').value), url_imagen: url_final };
     await fetch(`${API_URL}/productos/${id}`, opcionesProtegidas('PUT', p));
     mostrarCarga(false); cerrarModalEditar(); refrescarTodo();
+}
+
+// ==========================================
+// 7. EXPORTADOR A EXCEL (CSV PARA ARGENTINA)
+// ==========================================
+function abrirModalBalance() { document.getElementById('modal-balance').classList.remove('hidden'); }
+function cerrarModalBalance() { document.getElementById('modal-balance').classList.add('hidden'); }
+
+async function exportarAExcel() {
+    const [resVentas, resGastos, resExtras] = await Promise.all([
+        fetch(`${API_URL}/ventas/`, opcionesProtegidas('GET')),
+        fetch(`${API_URL}/gastos/`, opcionesProtegidas('GET')),
+        fetch(`${API_URL}/ingresos-extra/`, opcionesProtegidas('GET'))
+    ]);
+    const ventas = await resVentas.json();
+    const gastos = await resGastos.json();
+    const extras = await resExtras.json();
+
+    let dataUnificada = [];
+    ventas.forEach(v => {
+        const prod = productosGlobales.find(p => p.id === v.producto_id);
+        dataUnificada.push({ fecha: v.fecha, categoria: 'Venta Producto', detalle: `${v.cantidad}x ${prod ? prod.nombre : "Borrado"}`, monto: v.dinero_ingresado, signo: '+' });
+    });
+    gastos.forEach(g => dataUnificada.push({ fecha: g.fecha, categoria: `Gasto ${g.categoria}`, detalle: g.descripcion, monto: g.monto, signo: '-' }));
+    extras.forEach(e => dataUnificada.push({ fecha: e.fecha, categoria: 'Ingreso Extra', detalle: e.descripcion, monto: e.monto, signo: '+' }));
+
+    const fechaInicio = document.getElementById('filtro-inicio').value;
+    const fechaFin = document.getElementById('filtro-fin').value;
+    const tipo = document.getElementById('filtro-tipo').value;
+
+    let filtrados = dataUnificada.filter(m => {
+        let cumpleFecha = true;
+        if (fechaInicio) cumpleFecha = cumpleFecha && m.fecha >= fechaInicio;
+        if (fechaFin) cumpleFecha = cumpleFecha && m.fecha <= fechaFin;
+
+        let cumpleTipo = true;
+        if (tipo === 'ingresos') cumpleTipo = (m.signo === '+');
+        if (tipo === 'egresos') cumpleTipo = (m.signo === '-');
+
+        return cumpleFecha && cumpleTipo;
+    });
+
+    if(filtrados.length === 0) {
+        alert("No hay movimientos para las fechas y filtros seleccionados.");
+        return;
+    }
+
+    let csvContent = "\uFEFF"; 
+    csvContent += "Fecha;Tipo de Movimiento;Detalle;Monto\n"; 
+    
+    filtrados.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).forEach(row => {
+        let montoF = (row.signo === '+' ? row.monto : -row.monto).toString().replace('.', ','); 
+        csvContent += `${row.fecha};${row.categoria};"${row.detalle}";${montoF}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Balance_Matilde_V_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    cerrarModalBalance();
 }
